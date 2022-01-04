@@ -19,7 +19,6 @@ icon_bk = RSN_Preview('translate_bk.png', 'translate_bk')
 
 
 def get_pref():
-    """get preferences of this plugin"""
     return bpy.context.preferences.addons.get(__name__).preferences
 
 
@@ -33,12 +32,15 @@ def draw(self, context):
 
 
 class WM_OT_toggle_translation(bpy.types.Operator):
-    """Ctrl: Invert Icon Color"""
+    """Ctrl: Open addon Preference\nShift: Invert Icon Color"""
+
     bl_label = 'Translation'
     bl_idname = 'wm.toggle_translation'
 
     def invoke(self, context, event):
         if event.ctrl:
+            bpy.ops.preferences.addon_show(module=__name__)
+        elif event.shift:
             get_pref().icon_invert = True if get_pref().icon_invert is False else False
         else:
             view = context.preferences.view
@@ -63,6 +65,8 @@ def register():
 
     bpy.types.TOPBAR_MT_editor_menus.prepend(draw)
 
+    from .translation import auto_translation
+    auto_translation.register()
 
 def unregister():
     icon.unregister()
@@ -73,6 +77,8 @@ def unregister():
 
     bpy.types.TOPBAR_MT_editor_menus.remove(draw)
 
+    from .translation import auto_translation
+    auto_translation.unregister()
 
 if __name__ == '__main__':
     register()

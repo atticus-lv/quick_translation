@@ -30,6 +30,12 @@ def draw(self, context):
                     text='', emboss=False)
     layout.separator()
 
+def draw2(self, context):
+    layout = self.layout
+
+    layout.operator('wm.toggle_translation',
+                    icon_value=getattr(icon_bk if get_pref().icon_invert else icon, 'icon_value'),
+                    text='', emboss=False)
 
 class WM_OT_toggle_translation(bpy.types.Operator):
     """Ctrl: Open addon Preference\nShift: Invert Icon Color"""
@@ -64,6 +70,7 @@ def register():
     bpy.utils.register_class(QuickTranslatePreference)
 
     bpy.types.TOPBAR_MT_editor_menus.prepend(draw)
+    bpy.types.NODE_HT_header.prepend(draw2)
 
     from .translation import auto_translation
     auto_translation.register()
@@ -76,6 +83,7 @@ def unregister():
     bpy.utils.unregister_class(QuickTranslatePreference)
 
     bpy.types.TOPBAR_MT_editor_menus.remove(draw)
+    bpy.types.NODE_HT_header.remove(draw2)
 
     from .translation import auto_translation
     auto_translation.unregister()

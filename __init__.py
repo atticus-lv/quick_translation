@@ -4,7 +4,7 @@ bl_info = {
     "version": (0, 2),
     "blender": (2, 83, 0),
     "location": "Panels",
-    "description": "Add Quick Translation Button",
+    "description": "Quick translation button / 快速翻译按钮",
     "warning": "",
     "doc_url": "",
     "category": "Interface",
@@ -172,7 +172,7 @@ class QuickTranslatePreference(bpy.types.AddonPreferences):
 
 def init_visual_settings(unregister=False):
     for d in d_list:
-        update_visual_settings(d['menu'], d['attr'], d['drawing_func'],unregister)
+        update_visual_settings(d['menu'], d['attr'], d['drawing_func'], unregister)
 
 
 def register():

@@ -309,11 +309,11 @@ def init_visual_settings(unregister=False):
     for item in get_pref().custom_translations:
         register_translation(item, bpy.context)
     # global register
-    for cls in C_custom_translate:
+    for cls in C_custom_translate.values():
         if not unregister:
-            bpy.utils.register_class(cls)
+            cls.register()
         else:
-            bpy.utils.unregister_class(cls)
+            cls.unregister()
 
 
 def register():

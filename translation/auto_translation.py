@@ -19,7 +19,10 @@ class TranslationHelper():
             pass
 
     def unregister(self):
-        bpy.app.translations.unregister(self.name)
+        try:
+            bpy.app.translations.unregister(self.name)
+        except(ValueError):
+            pass
 
 
 # Set

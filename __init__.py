@@ -1,10 +1,10 @@
 bl_info = {
     "name": "Quick Translation",
     "author": "Atticus",
-    "version": (0, 2),
+    "version": (0, 3),
     "blender": (2, 83, 0),
     "location": "Panels",
-    "description": "Quick translation button / 快速翻译按钮",
+    "description": "Quick translation button & Custom file / 快速翻译按钮 & 自定义文件",
     "warning": "",
     "doc_url": "",
     "category": "Interface",
@@ -202,7 +202,9 @@ class WM_OT_remove_custom_translation(bpy.types.Operator):
     index: IntProperty(name='Index', default=0)
 
     def execute(self, context):
+        global C_custom_translate
         custom_translations = get_pref().custom_translations
+        C_custom_translate[custom_translations[self.index].name].unregister()
         custom_translations.remove(self.index)
 
         return {'FINISHED'}

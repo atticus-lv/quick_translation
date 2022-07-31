@@ -12,22 +12,30 @@ bl_info = {
 
 import bpy
 import json
-import os
 import csv
 from pathlib import Path
 
-from bpy.props import (BoolProperty, StringProperty, EnumProperty, IntProperty, FloatProperty, CollectionProperty)
+from bpy.props import (BoolProperty,
+                       StringProperty,
+                       EnumProperty,
+                       IntProperty,
+                       FloatProperty,
+                       CollectionProperty)
 
-from .icon_utils import RSN_Preview
+# register icon
+from .icon_utils import G_ICON_ID
 
-icon = RSN_Preview('translate.png', 'translate')
-icon_bk = RSN_Preview('translate_bk.png', 'translate_bk')
+icon_utils.register()
+
+icon = G_ICON_ID['translate']
+icon_bk = G_ICON_ID['translate_bk']
 
 
 def get_pref():
     return bpy.context.preferences.addons.get(__name__).preferences
 
 
+# main operator
 class WM_OT_toggle_translation(bpy.types.Operator):
     """Ctrl: Open addon Preference\nShift: Invert Icon Color"""
 
@@ -47,11 +55,12 @@ class WM_OT_toggle_translation(bpy.types.Operator):
         return {'FINISHED'}
 
 
+# ui append
 def draw_end_separator(self, context):
     layout = self.layout
 
     layout.operator('wm.toggle_translation',
-                    icon_value=getattr(icon_bk if get_pref().icon_invert else icon, 'icon_value'),
+                    icon_value=icon_bk if get_pref().icon_invert else icon,
                     text='', emboss=False)
     layout.separator()
 
@@ -60,10 +69,11 @@ def draw_end_norm(self, context):
     layout = self.layout
 
     layout.operator('wm.toggle_translation',
-                    icon_value=getattr(icon_bk if get_pref().icon_invert else icon, 'icon_value'),
+                    icon_value=icon_bk if get_pref().icon_invert else icon,
                     text='', emboss=False)
 
 
+# update ui append/remove
 def update_visual_settings(menu, attr, drawing_func, unregister=False):
     if unregister:
         try:
@@ -117,9 +127,10 @@ def update_icons(self, context):
         update_visual_settings(d['menu'], d['attr'], d['drawing_func'])
 
 
+# custom translation register
 def register_translation(self, context):
     global C_custom_translate
-    from .translation.auto_translation import TranslationHelper
+    from .translation.__init__ import TranslationHelper
 
     def get_path():
         return self.filepath if Path(self.filepath).exists() else None
@@ -127,39 +138,69 @@ def register_translation(self, context):
     path = get_path()
     if not path: return
 
-    if self.type == 'JSON' and path.endswith('.json'):
-        with open(path, encoding='utf-8') as f:
-            d = json.load(f)
-            help_cls = TranslationHelper(self.name, d, lang=self.lang)
+    encoding = self.encoding
+    if encoding == 'CUSTOM':
+        encoding = self.custom_encoding
 
-            if self.name in C_custom_translate:
-                help_cls.unregister()
-                C_custom_translate[self.name] = help_cls
-            if self.enable:
-                help_cls.register()
-                C_custom_translate[self.name] = help_cls
+    self.error_msg = ''
+
+    if self.type == 'JSON' and path.endswith('.json'):
+
+        with open(path, encoding=encoding) as f:
+            try:
+                d = json.load(f)
+                help_cls = TranslationHelper(self.name, d, lang=self.lang)
+
+                # update the enabled languages
+                if self.enable:
+                    if self.name in C_custom_translate:
+                        help_cls.unregister()
+                        C_custom_translate[self.name] = help_cls
+
+                    help_cls.register()
+                    C_custom_translate[self.name] = help_cls
+
+                else:
+                    help_cls.unregister()
+
+            except Exception:
+                # load file in error encoding with unregister the origin one
+                if self.name in C_custom_translate:
+                    help_cls = C_custom_translate[self.name]
+                    help_cls.unregister()
+
+
 
     elif self.type == 'CSV' and path.endswith('.csv'):
-        with open(path, encoding='utf-8') as f:
-            c = csv.reader(f)
-            d = {}
+        with open(path, encoding=encoding) as f:
+            try:
+                c = csv.reader(f)
+                d = {}
 
-            for row in c:
-                if len(row) != 2: continue
-                d[row[0]] = row[1]
+                for row in c:
+                    if len(row) != 2: continue
+                    d[row[0]] = row[1]
 
-            help_cls = TranslationHelper(self.name, d, lang=self.lang)
+                help_cls = TranslationHelper(self.name, d, lang=self.lang)
 
-            if self.name in C_custom_translate:
-                help_cls.unregister()
-                C_custom_translate[self.name] = help_cls
-            if self.enable:
-                help_cls.register()
-                C_custom_translate[self.name] = help_cls
-            else:
-                help_cls.unregister()
+                if self.enable:
+                    if self.name in C_custom_translate:
+                        help_cls.unregister()
+                        C_custom_translate[self.name] = help_cls
+
+                    help_cls.register()
+                    C_custom_translate[self.name] = help_cls
+
+                else:
+                    help_cls.unregister()
+
+            except Exception:
+                if self.name in C_custom_translate:
+                    help_cls = C_custom_translate[self.name]
+                    help_cls.unregister()
 
 
+# set and get name -> register/unregister
 def get_name(self):
     return self['name']
 
@@ -171,12 +212,25 @@ def check_name(self, value):
     self.name = value
 
 
+# custom translation props
 class CustomTranslation(bpy.types.PropertyGroup):
     name: StringProperty(name='Name', default='', get=get_name, set=check_name)
-    type: EnumProperty(name='Type', items=[('JSON', 'JSON', ''), ('CSV', 'CSV', '')], default='JSON')
-    filepath: StringProperty(name='File Path', default='', subtype='FILE_PATH', update=register_translation)
-    lang: StringProperty(name='Language', default='zh_CN', update=register_translation)
     enable: BoolProperty(name='Enable', default=True, update=register_translation)
+
+    type: EnumProperty(name='Type', items=[('JSON', 'JSON', ''), ('CSV', 'CSV', '')], default='JSON')
+
+    encoding: EnumProperty(name='Encoding', items=[('utf-8', 'utf-8', ''), ('ascii', 'ascii', ''), ('gbk', 'gbk', ''),
+                                                   ('gb2312', 'gb2312', ''), ('CUSTOM', 'Custom', '')], default='utf-8',
+                           update=register_translation)
+
+    custom_encoding: StringProperty(name='Custom Encoding', default='utf-8', update=register_translation)
+
+    filepath: StringProperty(name='File Path', default='', subtype='FILE_PATH', update=register_translation)
+    lang: EnumProperty(name='Language', items=sorted([(l, l, '') for l in bpy.app.translations.locales]),
+                       default='zh_CN',
+                       update=register_translation)
+
+    error_msg: StringProperty(name='Error', default='')
 
 
 # add / remove custom translation operator
@@ -216,6 +270,9 @@ class WM_OT_remove_custom_translation(bpy.types.Operator):
 class QuickTranslatePreference(bpy.types.AddonPreferences):
     bl_idname = __package__
 
+    # ui
+    tab: EnumProperty(items=[('SETTINGS', 'Settings', ''), ('CUSTOM', 'Custom', '')], default='SETTINGS')
+    # settings
     icon_invert: bpy.props.BoolProperty(name='Invert Icon Color')
 
     topbar: bpy.props.BoolProperty(name='Workspace', default=True, update=update_icons)
@@ -225,10 +282,21 @@ class QuickTranslatePreference(bpy.types.AddonPreferences):
                                               update=update_icons)
     view3d_header: bpy.props.BoolProperty(name='3D Viewport', default=False, update=update_icons)
 
+    # custom
     custom_translations: CollectionProperty(name='Custom Translations', type=CustomTranslation)
 
     def draw(self, context):
         layout = self.layout
+
+        row = layout.row(align=True)
+        row.prop(self, 'tab', expand=True)
+
+        if self.tab == 'SETTINGS':
+            self.draw_settings(context, layout)
+        elif self.tab == 'CUSTOM':
+            self.draw_custom_list(context, layout)
+
+    def draw_settings(self, context, layout):
         split = layout.split(factor=0.5)
         box = split.box()
 
@@ -267,19 +335,21 @@ class QuickTranslatePreference(bpy.types.AddonPreferences):
 
         row.separator()
         row.box().operator('wm.toggle_translation',
-                           icon_value=getattr(icon_bk if get_pref().icon_invert else icon, 'icon_value'),
+                           icon_value=icon_bk if get_pref().icon_invert else icon,
                            text='', emboss=True)
         row.separator()
         row.box().operator('wm.toggle_translation',
-                           icon_value=getattr(icon_bk if get_pref().icon_invert else icon, 'icon_value'),
+                           icon_value=icon_bk if get_pref().icon_invert else icon,
                            text='', emboss=False)
         row.separator()
 
-        col.separator()
+    def draw_custom_list(self, context, layout):
+        col = layout.column()
+        col.alert = True
         col.label(text='Test Me')
 
         col = layout.column()
-        col.label(text='Custom Translation')
+        col.label(text='Custom Translation', icon_value=icon_bk if get_pref().icon_invert else icon)
         # draw custom translations
 
         for i, item in enumerate(self.custom_translations):
@@ -292,6 +362,11 @@ class QuickTranslatePreference(bpy.types.AddonPreferences):
 
             row = box.row()
             row.prop(item, 'type')
+            row.prop(item, 'encoding')
+            if item.encoding == 'CUSTOM':
+                row.prop(item, 'custom_encoding')
+
+            row = box.row()
             row.prop(item, 'filepath', text='')
 
             d = row.row()
@@ -302,6 +377,7 @@ class QuickTranslatePreference(bpy.types.AddonPreferences):
         col.operator('wm.add_custom_translation', icon='ADD')
 
 
+# init the addon ui
 def init_visual_settings(unregister=False):
     for d in d_list:
         update_visual_settings(d['menu'], d['attr'], d['drawing_func'], unregister)
@@ -317,8 +393,7 @@ def init_visual_settings(unregister=False):
 
 
 def register():
-    icon.register()
-    icon_bk.register()
+    from . import translation
 
     bpy.utils.register_class(WM_OT_toggle_translation)
     bpy.utils.register_class(WM_OT_add_custom_translation)
@@ -326,24 +401,21 @@ def register():
     bpy.utils.register_class(CustomTranslation)
     bpy.utils.register_class(QuickTranslatePreference)
 
-    from .translation import auto_translation
-    auto_translation.register()
+    translation.register()
 
     init_visual_settings()
 
 
 def unregister():
-    icon.unregister()
-    icon_bk.unregister()
-
     bpy.utils.unregister_class(WM_OT_toggle_translation)
     bpy.utils.unregister_class(WM_OT_add_custom_translation)
     bpy.utils.unregister_class(WM_OT_remove_custom_translation)
     bpy.utils.unregister_class(QuickTranslatePreference)
     bpy.utils.unregister_class(CustomTranslation)
 
-    from .translation import auto_translation
-    auto_translation.unregister()
+    from . import icon_utils, translation
+    translation.unregister()
+    icon_utils.unregister()
 
     init_visual_settings(unregister=True)
 

@@ -32,6 +32,9 @@ icon_utils.register()
 icon = G_ICON_ID['translate']
 icon_bk = G_ICON_ID['translate_bk']
 
+# dict to store translation class
+C_custom_translate = {}
+
 
 def get_pref():
     return bpy.context.preferences.addons.get(__name__).preferences
@@ -121,8 +124,6 @@ d_list = [
     }
 ]
 
-C_custom_translate = {}
-
 
 def update_icons(self, context):
     for d in d_list:
@@ -151,24 +152,24 @@ def register_translation(self, context):
         with open(path, encoding=encoding) as f:
             try:
                 d = json.load(f)
-                help_cls = TranslationHelper(self.name, d, lang=self.lang)
+                help_cls = TranslationHelper(self.id, d, lang=self.lang)
 
                 # update the enabled languages
                 if self.enable:
-                    if self.name in C_custom_translate:
+                    if self.id in C_custom_translate:
                         help_cls.unregister()
-                        C_custom_translate[self.name] = help_cls
+                        C_custom_translate[self.id] = help_cls
 
                     help_cls.register()
-                    C_custom_translate[self.name] = help_cls
+                    C_custom_translate[self.id] = help_cls
 
                 else:
                     help_cls.unregister()
 
             except Exception:
                 # load file in error encoding with unregister the origin one
-                if self.name in C_custom_translate:
-                    help_cls = C_custom_translate[self.name]
+                if self.id in C_custom_translate:
+                    help_cls = C_custom_translate[self.id]
                     help_cls.unregister()
 
 
@@ -186,37 +187,27 @@ def register_translation(self, context):
                 help_cls = TranslationHelper(self.name, d, lang=self.lang)
 
                 if self.enable:
-                    if self.name in C_custom_translate:
+                    if self.id in C_custom_translate:
                         help_cls.unregister()
-                        C_custom_translate[self.name] = help_cls
+                        C_custom_translate[self.id] = help_cls
 
                     help_cls.register()
-                    C_custom_translate[self.name] = help_cls
+                    C_custom_translate[self.id] = help_cls
 
                 else:
                     help_cls.unregister()
 
             except Exception:
-                if self.name in C_custom_translate:
-                    help_cls = C_custom_translate[self.name]
+                if self.id in C_custom_translate:
+                    help_cls = C_custom_translate[self.id]
                     help_cls.unregister()
-
-
-# set and get name -> register/unregister
-def get_name(self):
-    return self['name']
-
-
-def check_name(self, value):
-    if value in C_custom_translate:
-        C_custom_translate[value].unregister()
-
-    self.name = value
 
 
 # custom translation props
 class CustomTranslation(bpy.types.PropertyGroup):
-    name: StringProperty(name='Name', default='', get=get_name, set=check_name)
+    id: StringProperty(name="Reg ID", description="Register ID", default="")
+
+    name: StringProperty(name='Name', default='')
     lang: EnumProperty(name='Language', items=sorted([(l, l, '') for l in bpy.app.translations.locales]),
                        default='zh_CN',
                        update=register_translation)
@@ -233,6 +224,9 @@ class CustomTranslation(bpy.types.PropertyGroup):
     error_msg: StringProperty(name='Error', default='')
 
 
+import uuid
+
+
 # add / remove custom translation operator
 class WM_OT_add_custom_translation(bpy.types.Operator):
     """Add Custom Translation"""
@@ -243,7 +237,8 @@ class WM_OT_add_custom_translation(bpy.types.Operator):
     def invoke(self, context, event):
         custom_translations = get_pref().custom_translations
         item = custom_translations.add()
-        item.name = 'Translation' + str(len(custom_translations))
+        item.name = f'Translation{str(len(custom_translations))}'
+        item.id = str(uuid.uuid4().int)
         return {'FINISHED'}
 
 
@@ -258,8 +253,12 @@ class WM_OT_remove_custom_translation(bpy.types.Operator):
     def execute(self, context):
         global C_custom_translate
         custom_translations = get_pref().custom_translations
-        C_custom_translate[custom_translations[self.index].name].unregister()
-        custom_translations.remove(self.index)
+        try:
+            C_custom_translate[custom_translations[self.index].id].unregister()
+        except KeyError:
+            pass
+        finally:
+            custom_translations.remove(self.index)
 
         return {'FINISHED'}
 

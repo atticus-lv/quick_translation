@@ -3,6 +3,9 @@
   "Invert Icon Color": "反转icon颜色",
   "Translation": "翻译",
   "Add Custom Translation": "添加自定义翻译",
+  "File Type": "文件类型",
+  "File Encoding": "文件编码",
+  "File Not Found": "文件未找到",
   "Custom Translation": "自定义翻译",
   "Remove Custom Translation": "移除自定义翻译",
   "Add quick translation button": "添加快速翻译按钮"

@@ -1,3 +1,5 @@
+import os.path
+
 bl_info = {
     "name": "Quick Translation",
     "author": "Atticus",
@@ -215,20 +217,18 @@ def check_name(self, value):
 # custom translation props
 class CustomTranslation(bpy.types.PropertyGroup):
     name: StringProperty(name='Name', default='', get=get_name, set=check_name)
-    enable: BoolProperty(name='Enable', default=True, update=register_translation)
-
-    type: EnumProperty(name='Type', items=[('JSON', 'JSON', ''), ('CSV', 'CSV', '')], default='JSON')
-
-    encoding: EnumProperty(name='Encoding', items=[('utf-8', 'utf-8', ''), ('ascii', 'ascii', ''), ('gbk', 'gbk', ''),
-                                                   ('gb2312', 'gb2312', ''), ('CUSTOM', 'Custom', '')], default='utf-8',
-                           update=register_translation)
-
-    custom_encoding: StringProperty(name='Custom Encoding', default='utf-8', update=register_translation)
-
-    filepath: StringProperty(name='File Path', default='', subtype='FILE_PATH', update=register_translation)
     lang: EnumProperty(name='Language', items=sorted([(l, l, '') for l in bpy.app.translations.locales]),
                        default='zh_CN',
                        update=register_translation)
+    enable: BoolProperty(name='Enable', default=True, update=register_translation)
+
+    filepath: StringProperty(name='File Path', default='', subtype='FILE_PATH', update=register_translation)
+    type: EnumProperty(name='File Type', items=[('JSON', 'JSON', ''), ('CSV', 'CSV', '')], default='JSON')
+    encoding: EnumProperty(name='File Encoding',
+                           items=[('utf-8', 'utf-8', ''), ('ascii', 'ascii', ''), ('gbk', 'gbk', ''),
+                                  ('gb2312', 'gb2312', ''), ('CUSTOM', 'Custom', '')], default='utf-8',
+                           update=register_translation)
+    custom_encoding: StringProperty(name='Custom Encoding', default='utf-8', update=register_translation)
 
     error_msg: StringProperty(name='Error', default='')
 
@@ -360,18 +360,30 @@ class QuickTranslatePreference(bpy.types.AddonPreferences):
             row.prop(item, 'lang')
             row.prop(item, 'enable')
 
-            row = box.row()
-            row.prop(item, 'type')
-            row.prop(item, 'encoding')
-            if item.encoding == 'CUSTOM':
-                row.prop(item, 'custom_encoding')
-
-            row = box.row()
-            row.prop(item, 'filepath', text='')
-
             d = row.row()
             d.alert = True
             d.operator('wm.remove_custom_translation', icon='X', text='').index = i
+
+            file_box = box.box().column()
+            file_box.use_property_split = True
+            file_box.use_property_decorate = False
+
+            file_box.prop(item, 'filepath', text='')
+
+            file_box.separator(factor=0.5)
+
+            if os.path.exists(item.filepath):
+                file_box.prop(item, 'type')
+                file_box.separator(factor=0.5)
+
+                row = file_box.row()
+                row.prop(item, 'encoding')
+                if item.encoding == 'CUSTOM':
+                    row.prop(item, 'custom_encoding', text='')
+            else:
+                row = file_box.column()
+                row.alert = True
+                row.label(text='File Not Found')
 
         col.separator()
         col.operator('wm.add_custom_translation', icon='ADD')

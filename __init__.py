@@ -3,7 +3,7 @@ import os.path
 bl_info = {
     "name": "Quick Translation",
     "author": "Atticus",
-    "version": (0, 3),
+    "version": (0, 4),
     "blender": (2, 83, 0),
     "location": "Panels",
     "description": "Quick translation button & Custom file / 快速翻译按钮 & 自定义文件",
@@ -271,7 +271,9 @@ class QuickTranslatePreference(bpy.types.AddonPreferences):
     bl_idname = __package__
 
     # ui
-    tab: EnumProperty(items=[('SETTINGS', 'Settings', ''), ('CUSTOM', 'Custom', '')], default='SETTINGS')
+    tab: EnumProperty(
+        items=[('SETTINGS', 'Button Settings', ''), ('CUSTOM', 'Custom Translation', ''), ('TOOL', 'Tool', '')],
+        default='SETTINGS')
     # settings
     icon_invert: bpy.props.BoolProperty(name='Invert Icon Color')
 
@@ -295,6 +297,8 @@ class QuickTranslatePreference(bpy.types.AddonPreferences):
             self.draw_settings(context, layout)
         elif self.tab == 'CUSTOM':
             self.draw_custom_list(context, layout)
+        elif self.tab == 'TOOL':
+            layout.label(text='WIP')
 
     def draw_settings(self, context, layout):
         split = layout.split(factor=0.5)
@@ -349,9 +353,8 @@ class QuickTranslatePreference(bpy.types.AddonPreferences):
         col.label(text='Test Me')
 
         col = layout.column()
-        col.label(text='Custom Translation', icon_value=icon_bk if get_pref().icon_invert else icon)
-        # draw custom translations
 
+        # draw custom translations
         for i, item in enumerate(self.custom_translations):
             box = col.box()
 

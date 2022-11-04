@@ -1,5 +1,3 @@
-import os.path
-
 bl_info = {
     "name": "Quick Translation",
     "author": "Atticus",
@@ -15,6 +13,7 @@ bl_info = {
 import bpy
 import json
 import csv
+import os
 from pathlib import Path
 
 from bpy.props import (BoolProperty,

@@ -17,7 +17,7 @@ def register_icon():
     for file in os.listdir(str(icon_dir)):
         if file.endswith('.png'):
             icons.append(icon_dir.joinpath(file))
-    # 注册
+    # register
     pcoll = previews.new()
 
     for icon_path in icons:
